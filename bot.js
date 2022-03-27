@@ -1,19 +1,25 @@
 const fs = require("fs");
 const { Client, Collection, Intents, MessageActionRow, MessageButton, MessageEmbed } = require('discord.js'); //stole from stackoverflow can't use const discord = require("discord.js"); anymore :(
-const client = new Client({ intents: [Intents.FLAGS.GUILDS] }); //??????????!?!?! what are intents please help me
+const client = new Client({ intents: [Intents.FLAGS.GUILDS],fetchAllMembers: true, }); //??????????!?!?! what are intents please help me
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 require('dotenv').config();
+
+//get commands and put them in a collection
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 client.commands = new Collection();
+
 const error1 = setTimeout(function () {
 	console.log("\x1b[41m", "ERROR: UNABLE TO CONNECT TO DISCORD SERVER");
 }, 10000);
 
-//exports
-const workCooldown = new Map();
 
-function constructEmbed(colour, content, user) {
+//functions that are used in other places
+function getGuild(id){
+	return client.guilds.get(id)
+}
+
+function constructEmbed(colour, content, user) { //creates embed
 	return ({
 		embeds: [{
 			color: colour,
@@ -26,7 +32,7 @@ function constructEmbed(colour, content, user) {
 	})
 }
 
-function constructError(content, user) {
+function constructError(content, user) { //creates ephemeral error embed
 	return ({
 		embeds: [{
 			color: "#db3e00",
@@ -40,7 +46,7 @@ function constructError(content, user) {
 	})
 }
 
-function constructButtons(primaryText, secondaryText) {
+function constructButtons(primaryText, secondaryText) { //self explanitory 
 	return new MessageActionRow()
 		.addComponents(
 			new MessageButton()
@@ -54,7 +60,8 @@ function constructButtons(primaryText, secondaryText) {
 		);
 }
 
-function start() {
+
+function start() { //on start sets user activity to whatever is in views/game.txt
 	console.clear()
 	console.log("Loading... Please wait");
 	client.on("ready", () => {
@@ -64,38 +71,21 @@ function start() {
 		console.log("Log:");
 		console.log("");
 		client.user.setActivity(fs.readFileSync("views/game.txt", "utf8")); 
+		profilePicture = client.user.avatarURL()
 	});
-
-	for (const file of commandFiles) {
+	for (const file of commandFiles) { //initialize commands
 		const command = require(`./commands/${file}`);
 		client.commands.set(command.data.name, command);
 	}
 
-	client.on('interactionCreate', async interaction => {
-
-		//if interaction was a button press
-		/*
-		if (interaction.isButton()) {
-			const commands = new Object();
-			for (const file of commandFiles) {
-				commands[file] = (require(`./commands/${file}`));
-			}
-			switch (interaction.customId) {
-				case "Heads":
-				case "Tails":
-					commands["bet.js"].onPress(interaction)
-					break;
-			}
-		}
-		*/
+	client.on('interactionCreate', async interaction => { //run on interaction
 		//if interaction was a command
 		if (interaction.isCommand()) {
 			const command = client.commands.get(interaction.commandName);
-			console.log(command)
 			if (!command) return;
 
 			try {
-				await command.execute(interaction);
+				await command.execute(interaction); //run command
 			} catch (error) {
 				console.error(error);
 				return interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
@@ -105,4 +95,5 @@ function start() {
 	});
 	client.login(process.env.DISCORD_TOKEN);
 }
-module.exports = { workCooldown, constructEmbed, constructError, constructButtons, start };
+ 
+module.exports = { getGuild, constructEmbed, constructError, constructButtons, start };
